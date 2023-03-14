@@ -3,10 +3,11 @@
 # virulence (represented here by recovery rate) evolves to an optimal value
 # for the given group structure.
 #
-# Simon Frost's Agents.jl SIR model served as a helpful example which 
-# I drew on for the SIR portion of this model 
-# (https://github.com/epirecipes/sir-julia/blob/master/script/abm/abm.jl). I
-# combined an SIR model with code I wrote for understanding the spread of
+# I drew on Simon Frost's Agents.jl SIR model as a helpful example 
+# (https://github.com/epirecipes/sir-julia/blob/master/script/abm/abm.jl)
+# for the SIR portion of this model. 
+#
+# I combined an SIR model with code I wrote for understanding the spread of
 # adaptations in metapopulations, currently at 
 # https://github.com/eehh-stanford/SustainableCBA/blob/main/src/model.jl. 
 # But here we have disease transmission instead of social learning as 
@@ -18,7 +19,6 @@
 using Agents
 using Distributions
 using Random
-
 
 
 """
@@ -99,7 +99,7 @@ end
 
 
 """
-Virulence-transmissibility tradeoff: more virulent 
+Virulence tradeoff: more virulent means lower recovery rate, higher death rate.
 """
 function mortality_rate(recovery_rate::Float64)
     return 1.0 - recovery_rate
