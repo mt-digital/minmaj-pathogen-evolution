@@ -1,21 +1,21 @@
-"""
-Agent-based SIR model of infectious disease spread where the pathogen's
-virulence (represented here by recovery rate) evolves to an optimal value
-for the given group structure.
+##
+# Agent-based SIR model of infectious disease spread where the pathogen's
+# virulence (represented here by recovery rate) evolves to an optimal value
+# for the given group structure.
 
-I drew on Simon Frost's Agents.jl SIR model as a helpful example 
-(https://github.com/epirecipes/sir-julia/blob/master/script/abm/abm.jl)
-for the SIR portion of this model. 
+# I drew on Simon Frost's Agents.jl SIR model as a helpful example 
+# (https://github.com/epirecipes/sir-julia/blob/master/script/abm/abm.jl)
+# for the SIR portion of this model. 
 
-I combined an SIR model with code I wrote for understanding the spread of
-adaptations in metapopulations, currently at 
-https://github.com/eehh-stanford/SustainableCBA/blob/main/src/model.jl. 
-But here we have disease transmission instead of social learning as 
-in SustainbleCBA.
+# I combined an SIR model with code I wrote for understanding the spread of
+# adaptations in metapopulations, currently at 
+# https://github.com/eehh-stanford/SustainableCBA/blob/main/src/model.jl. 
+# But here we have disease transmission instead of social learning as 
+# in SustainbleCBA.
 
-Author: Matthew A. Turner <maturner01@gmail.com>
-Date: March 16, 2023
-"""
+# Author: Matthew A. Turner <maturner01@gmail.com>
+# Date: March 16, 2023
+#
 using Agents
 using Distributions
 using Random
@@ -49,10 +49,9 @@ struct Pathogen
 end
 
 
-mutable struct Person <: AbstractAgent
+# mutable struct Person <: AbstractAgent
+@agent Person ContinuousAgent{2} begin
     
-    id::Int
-
     group::Group
     homophily::Float64
 
@@ -112,15 +111,19 @@ function birth_new_agent!(model)
     if rand() < model.minority_fraction
         group = Minority
         homophily = model.homophily_min
+        position = (rand(model.min_uniform_x), rand())
     else
         group = Majority
         homophily = model.homophily_maj
+        position = (rand(model.maj_uniform_x), rand())
     end
-
+    
     add_agent!(
-        Person(nextid(model), group, homophily, Susceptible, Pathogen(NaN)), 
+        Person(nextid(model), position, (0.0, 0.0), 
+               group, homophily, Susceptible, Pathogen(NaN)), 
         model
     )
+
 end
 
 
@@ -240,10 +243,16 @@ function minmaj_evoid_model(;metapop_size = 100, minority_fraction = 0.5,
     # Mutations are drawn from normal distros with zero mean and given variance.
     mutation_dist = Normal(0.0, mutation_variance)
 
-    properties = @dict(metapop_size, minority_fraction, homophily_min, homophily_maj,
-                       group_zero, transmissibility, recovery_rate_init, initial_infected_frac,
-                       in_group_freq_min, in_group_freq_maj, mutation_rate, mutation_dist,
-                       global_birth_rate, global_death_rate)
+    # Create distribution space for each agent type for interactive ABM dynamics.
+    min_uniform_x = Uniform(0.0, minority_fraction) 
+    maj_uniform_x = Uniform(minority_fraction, 1.0) 
+
+    properties = @dict(metapop_size, minority_fraction, homophily_min, 
+                       homophily_maj, group_zero, transmissibility, 
+                       recovery_rate_init, initial_infected_frac,
+                       in_group_freq_min, in_group_freq_maj, mutation_rate, 
+                       mutation_dist, global_birth_rate, global_death_rate,
+                       min_uniform_x, maj_uniform_x)
 
     model = ABM(Person; properties)
     initialize_metapopulation!(model)
@@ -281,6 +290,7 @@ function initialize_metapopulation!(model::ABM)
 
             group = Minority
             homophily = homophily_min
+            position = (rand(model.min_uniform_x), rand())
 
             if (((group_zero == Minority) || (group_zero == Both)) &&
                 (agent_idx ≤ initial_infected_count))
@@ -296,6 +306,7 @@ function initialize_metapopulation!(model::ABM)
 
             group = Majority
             homophily = homophily_maj
+            position = (rand(model.maj_uniform_x), rand())
 
             if (((group_zero == Majority) || (group_zero == Both)) 
                 && (agent_idx ≤ minority_pop_size + initial_infected_count)) 
@@ -306,10 +317,13 @@ function initialize_metapopulation!(model::ABM)
                 status = Susceptible
                 pathogen = Pathogen(NaN)
             end
-
         end
 
-        add_agent!(Person(agent_idx, group, homophily, status, pathogen), model)
+        add_agent!(
+            Person(agent_idx, position, (0.0, 0.0), group, 
+                   homophily, status, pathogen), 
+            model
+        )
     end
 end
 

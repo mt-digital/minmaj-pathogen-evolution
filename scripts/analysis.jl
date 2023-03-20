@@ -3,6 +3,9 @@ using DataFrames
 using RCall
 
 
+include("../src/model.jl")
+
+
 function plot_series(agent_df)
     if !isdir("tmp")
         mkdir("tmp")
@@ -24,14 +27,16 @@ function run_series(plot = true; model_params...)
     infected(x) = isempty(x) ? 0.0 : count(i == Infected for i in x) 
     recovered(x) = isempty(x) ? 0.0 : count(i == Recovered for i in x) 
 
-    adata = adata = [(:status, f) for f in (susceptible, infected, recovered)]
+    adata = [(:status, f) for f in (susceptible, infected, recovered)]
+
+    stopfn(model, step) = (length(collect(allagents(model))) == 1) || (step == 500)
 
     m = minmaj_evoid_model(metapop_size = 100, group_zero = Both, 
                            transmissibility = 0.6, recovery_rate_init = 0.3, 
                            mutation_rate = 0.0,  initial_infected_frac = 0.1, 
                            global_birth_rate=0.75, global_death_rate=0.5); 
 
-    agent_df, _ = run!(m, agent_step!, model_step!, stopfn; adata); print(adf)
+    agent_df, _ = run!(m, agent_step!, model_step!, stopfn; adata)
 
     rename!(agent_df, :susceptible_status => :susceptible,
                       :infected_status => :infected,
@@ -41,5 +46,5 @@ function run_series(plot = true; model_params...)
         plot_series(agent_df)
     end
 
-    return adf
+    return agent_df
 end
