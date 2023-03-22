@@ -21,7 +21,7 @@ function plot_series(agent_df)
 end
 
 
-function run_series(plot = true; model_params...)
+function run_series(plot = true; maxsteps = 1000, model_params...)
     
     susceptible(x) = isempty(x) ? 0.0 : count(i == Susceptible for i in x) 
     infected(x) = isempty(x) ? 0.0 : count(i == Infected for i in x) 
@@ -29,7 +29,8 @@ function run_series(plot = true; model_params...)
 
     adata = [(:status, f) for f in (susceptible, infected, recovered)]
 
-    stopfn(model, step) = (length(collect(allagents(model))) == 1) || (step == 500)
+    stopfn(model, step) = (length(collect(allagents(model))) == 1) || 
+                          (step == maxsteps)
 
     m = minmaj_evoid_model(metapop_size = 100, group_zero = Both, 
                            transmissibility = 0.6, recovery_rate_init = 0.3, 

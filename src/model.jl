@@ -14,7 +14,7 @@
 # in SustainbleCBA.
 
 # Author: Matthew A. Turner <maturner01@gmail.com>
-# Date: March 16, 2023
+# Date: March 21, 2023
 #
 using Agents
 using Distributions
@@ -49,8 +49,7 @@ struct Pathogen
 end
 
 
-# mutable struct Person <: AbstractAgent
-@agent Person ContinuousAgent{2} begin
+mutable struct Person <: AbstractAgent
     
     group::Group
     homophily::Float64
@@ -111,16 +110,13 @@ function birth_new_agent!(model)
     if rand() < model.minority_fraction
         group = Minority
         homophily = model.homophily_min
-        position = (rand(model.min_uniform_x), rand())
     else
         group = Majority
         homophily = model.homophily_maj
-        position = (rand(model.maj_uniform_x), rand())
     end
     
     add_agent!(
-        Person(nextid(model), position, (0.0, 0.0), 
-               group, homophily, Susceptible, Pathogen(NaN)), 
+        Person(nextid(model), group, homophily, Susceptible, Pathogen(NaN)), 
         model
     )
 
@@ -243,16 +239,11 @@ function minmaj_evoid_model(;metapop_size = 100, minority_fraction = 0.5,
     # Mutations are drawn from normal distros with zero mean and given variance.
     mutation_dist = Normal(0.0, mutation_variance)
 
-    # Create distribution space for each agent type for interactive ABM dynamics.
-    min_uniform_x = Uniform(0.0, minority_fraction) 
-    maj_uniform_x = Uniform(minority_fraction, 1.0) 
-
     properties = @dict(metapop_size, minority_fraction, homophily_min, 
                        homophily_maj, group_zero, transmissibility, 
                        recovery_rate_init, initial_infected_frac,
                        in_group_freq_min, in_group_freq_maj, mutation_rate, 
-                       mutation_dist, global_birth_rate, global_death_rate,
-                       min_uniform_x, maj_uniform_x)
+                       mutation_dist, global_birth_rate, global_death_rate)
 
     model = ABM(Person; properties)
     initialize_metapopulation!(model)
@@ -290,7 +281,6 @@ function initialize_metapopulation!(model::ABM)
 
             group = Minority
             homophily = homophily_min
-            position = (rand(model.min_uniform_x), rand())
 
             if (((group_zero == Minority) || (group_zero == Both)) &&
                 (agent_idx ≤ initial_infected_count))
@@ -306,7 +296,6 @@ function initialize_metapopulation!(model::ABM)
 
             group = Majority
             homophily = homophily_maj
-            position = (rand(model.maj_uniform_x), rand())
 
             if (((group_zero == Majority) || (group_zero == Both)) 
                 && (agent_idx ≤ minority_pop_size + initial_infected_count)) 
@@ -320,9 +309,7 @@ function initialize_metapopulation!(model::ABM)
         end
 
         add_agent!(
-            Person(agent_idx, position, (0.0, 0.0), group, 
-                   homophily, status, pathogen), 
-            model
+            Person(agent_idx, group, homophily, status, pathogen), model
         )
     end
 end
