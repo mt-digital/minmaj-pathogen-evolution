@@ -21,3 +21,6 @@ rnot_homoph <- function(delta, mu = 0.1, s1_init = 0.3,
 
   return (eigen(G)$values[1])
 }
+
+
+# Then make some plots of this.

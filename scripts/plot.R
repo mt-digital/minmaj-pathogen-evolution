@@ -16,8 +16,6 @@ plot_series <- function(csv_file, write_path="tmp/output.pdf") {
   df <- read.csv(csv_file)
   melted <- melt(df, id.vars = "step")
 
-  print(head(melted))
-
   ggplot(melted, aes(x=step, y=value, col=variable)) + geom_line() + mytheme
 
   ggsave(write_path, width=6.75, height=5)

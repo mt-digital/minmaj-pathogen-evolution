@@ -6,46 +6,55 @@ using RCall
 include("../src/model.jl")
 
 
-function plot_series(agent_df)
-    if !isdir("tmp")
-        mkdir("tmp")
-    end
-
-    CSV.write("tmp/series.csv", agent_df)
-    # TODO call R plotting routine.
-    R"""
-    source("scripts/plot.R")
-
-    plot_series("tmp/series.csv")
-    """
-end
-
-
 function run_series(plot = true; maxsteps = 1000, model_params...)
     
     susceptible(x) = isempty(x) ? 0.0 : count(i == Susceptible for i in x) 
     infected(x) = isempty(x) ? 0.0 : count(i == Infected for i in x) 
-    recovered(x) = isempty(x) ? 0.0 : count(i == Recovered for i in x) 
+    # recovered(x) = isempty(x) ? 0.0 : count(i == Recovered for i in x) 
 
-    adata = [(:status, f) for f in (susceptible, infected, recovered)]
+    # adata = [(:status, f) for f in (susceptible, infected, recovered)]
+    adata = [(:status, f) for f in (susceptible, infected)]
+    mdata = [:total_infected]
 
-    stopfn(model, step) = (length(collect(allagents(model))) == 1) || 
-                          (step == maxsteps)
+    stopfn(model, step) = all(
+        map(agent -> agent.status == Dead, 
+            collect(allagents(model)))
+    )
 
-    m = minmaj_evoid_model(metapop_size = 100, group_zero = Both, 
-                           transmissibility = 0.6, recovery_rate_init = 0.3, 
-                           mutation_rate = 0.0,  initial_infected_frac = 0.1, 
-                           global_birth_rate=0.75, global_death_rate=0.5); 
+    stopfn(model, step) = count(
+        agent.status == Infected for agent in collect(allagents(model))
+    ) == 0
 
-    agent_df, _ = run!(m, agent_step!, model_step!, stopfn; adata)
+    m = minmaj_evoid_model(; model_params...); 
+
+    agent_df, model_df = run!(m, agent_step!, model_step!, stopfn; adata, mdata);
 
     rename!(agent_df, :susceptible_status => :susceptible,
-                      :infected_status => :infected,
-                      :recovered_status => :recovered)
+                      :infected_status => :infected);
+                      # :recovered_status => :recovered)
 
     if plot
         plot_series(agent_df)
     end
 
-    return agent_df
+    return agent_df, model_df
+end
+
+
+function plot_series(agent_df)
+
+    # Create temporary directory for CSV and plot output.
+    if !isdir("tmp")
+        mkdir("tmp")
+    end
+
+    # Write temporary CSV for plotting.
+    CSV.write("tmp/series.csv", agent_df)
+
+    # Call R plotting routine.
+    R"""
+    source("scripts/plot.R")
+
+    plot_series("tmp/series.csv")
+    """
 end
